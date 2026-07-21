@@ -46,7 +46,7 @@ jobs:
             --query "data[0].id" \
             --raw-output)
           echo "Usando imagem: $IMAGE_ID"
-          oci compute instance launch --debug \
+          oci compute instance launch \
             --compartment-id "${{ secrets.COMPARTMENT_ID }}" \
             --availability-domain "${{ secrets.AVAILABILITY_DOMAIN }}" \
             --shape "VM.Standard.A1.Flex" \
@@ -61,5 +61,4 @@ jobs:
         if: steps.launch.outcome == 'success'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d text="✅ Consegui criar a instância Ampere A1! Entre no console da Oracle para configurar o servidor."
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID
