@@ -1,0 +1,56 @@
+name: Retry Oracle Ampere Instance
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # a cada 15 minutos
+  workflow_dispatch:          # permite rodar manualmente pelo site do GitHub também
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OCI CLI
+        run: pip install oci-cli
+
+      - name: Configure OCI credentials
+        run: |
+          mkdir -p ~/.oci
+          printf '%s' "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          printf '%s' "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          printf '%s' "${{ secrets.SSH_PUBLIC_KEY }}" > ~/ssh_public_key.pub
+
+      - name: Check if an Ampere instance already exists
+        id: check
+        run: |
+          COUNT=$(oci compute instance list \
+            --compartment-id "${{ secrets.COMPARTMENT_ID }}" \
+            --lifecycle-state RUNNING \
+            --all \
+            --query "length(data[?shape=='VM.Standard.A1.Flex'])" \
+            --raw-output)
+          echo "Instâncias Ampere já rodando: $COUNT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Try to launch Ampere instance
+        if: steps.check.outputs.count == '0'
+        id: launch
+        continue-on-error: true
+        run: |
+          oci compute instance launch \
+            --compartment-id "${{ secrets.COMPARTMENT_ID }}" \
+            --availability-domain "${{ secrets.AVAILABILITY_DOMAIN }}" \
+            --shape "VM.Standard.A1.Flex" \
+            --shape-config '{"ocpus": 1, "memoryInGBs": 6}' \
+            --image-id "${{ secrets.IMAGE_ID }}" \
+            --subnet-id "${{ secrets.SUBNET_ID }}" \
+            --assign-public-ip true \
+            --ssh-authorized-keys-file ~/ssh_public_key.pub \
+            --display-name "instance-ampere-auto"
+
+      - name: Notify success via Telegram
+        if: steps.launch.outcome == 'success'
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="✅ Consegui criar a instância Ampere A1! Entre no console da Oracle para configurar o servidor."
