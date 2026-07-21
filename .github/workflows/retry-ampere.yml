@@ -37,12 +37,21 @@ jobs:
         id: launch
         continue-on-error: true
         run: |
+          IMAGE_ID=$(oci compute image list \
+            --compartment-id "${{ secrets.COMPARTMENT_ID }}" \
+            --operating-system "Canonical Ubuntu" \
+            --operating-system-version "24.04" \
+            --sort-by TIMECREATED \
+            --sort-order DESC \
+            --query "data[0].id" \
+            --raw-output)
+          echo "Usando imagem: $IMAGE_ID"
           oci compute instance launch \
             --compartment-id "${{ secrets.COMPARTMENT_ID }}" \
             --availability-domain "${{ secrets.AVAILABILITY_DOMAIN }}" \
             --shape "VM.Standard.A1.Flex" \
             --shape-config '{"ocpus": 1, "memoryInGBs": 6}' \
-            --image-id "${{ secrets.IMAGE_ID }}" \
+            --image-id "$IMAGE_ID" \
             --subnet-id "${{ secrets.SUBNET_ID }}" \
             --assign-public-ip true \
             --ssh-authorized-keys-file ~/ssh_public_key.pub \
