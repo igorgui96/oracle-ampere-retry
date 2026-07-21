@@ -2,7 +2,7 @@ name: Retry Oracle Ampere Instance
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # a cada 15 minutos
+    - cron: '*/5 * * * *'   # a cada 5 minutos
   workflow_dispatch:          # permite rodar manualmente pelo site do GitHub também
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
             --query "data[0].id" \
             --raw-output)
           echo "Usando imagem: $IMAGE_ID"
-          oci compute instance launch \
+          oci compute instance launch --debug \
             --compartment-id "${{ secrets.COMPARTMENT_ID }}" \
             --availability-domain "${{ secrets.AVAILABILITY_DOMAIN }}" \
             --shape "VM.Standard.A1.Flex" \
